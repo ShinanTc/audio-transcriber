@@ -16,21 +16,27 @@ def transcribe_audio(audio_path):
     print("Loading Whisper model...")
     model = whisper.load_model("base")
 
-    print("Transcribing audio...")
-    result = model.transcribe(audio_path)
+    print("Transcribing audio with word timestamps...")
+    result = model.transcribe(audio_path, word_timestamps=True)
 
     return result["segments"]
 
-def save_srt(segments, output_path):
+def save_srt_word_by_word(segments, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
-        for i, segment in enumerate(segments, start=1):
-            start = format_timestamp(segment["start"])
-            end = format_timestamp(segment["end"])
-            text = segment["text"].strip()
+        index = 1
 
-            f.write(f"{i}\n")
-            f.write(f"{start} --> {end}\n")
-            f.write(f"{text}\n\n")
+        for segment in segments:
+            # Each segment now contains a "words" list
+            for word_info in segment.get("words", []):
+                start = format_timestamp(word_info["start"])
+                end = format_timestamp(word_info["end"])
+                word = word_info["word"].strip()
+
+                f.write(f"{index}\n")
+                f.write(f"{start} --> {end}\n")
+                f.write(f"{word}\n\n")
+
+                index += 1
 
 def main():
     if not os.path.exists(AUDIO_FILE):
@@ -38,9 +44,9 @@ def main():
         return
 
     segments = transcribe_audio(AUDIO_FILE)
-    save_srt(segments, OUTPUT_FILE)
+    save_srt_word_by_word(segments, OUTPUT_FILE)
 
-    print(f"Subtitles saved to {OUTPUT_FILE}")
+    print(f"Word-by-word subtitles saved to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
